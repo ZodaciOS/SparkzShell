@@ -18,6 +18,20 @@ jobs:
     - name: Select Xcode 16
       run: sudo xcode-select -s /Applications/Xcode_16.0.app/Contents/Developer
 
+    - name: Install iSH Build Tools
+      run: brew install meson ninja
+
+    - name: Clone iSH Source Code
+      run: git clone https://github.com/ish-app/ish.git ${{ github.workspace }}/ish-source
+
+    - name: Build iSHCore.xcframework
+      working-directory: ${{ github.workspace }}/ish-source
+      run: ./build.sh
+    
+    - name: Move Framework to Project Root
+      run: |
+        mv ${{ github.workspace }}/ish-source/build/ish.xcframework ${{ github.workspace }}/iSHCore.xcframework
+
     - name: Create ExportOptions.plist
       run: |
         echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" >> ExportOptions.plist
