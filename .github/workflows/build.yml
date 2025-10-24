@@ -1,0 +1,60 @@
+name: Build SparkzShell IPA
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-14
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Select Xcode 16
+      run: sudo xcode-select -s /Applications/Xcode_16.0.app/Contents/Developer
+
+    - name: Create ExportOptions.plist
+      run: |
+        echo "<?xml version=\"1.0\" encoding=\"UTF-8\"?>" >> ExportOptions.plist
+        echo "<!DOCTYPE plist PUBLIC \"-//Apple//DTD PLIST 1.0//EN\" \"http://www.apple.com/DTDs/PropertyList-1.0.dtd\">" >> ExportOptions.plist
+        echo "<plist version=\"1.0\">" >> ExportOptions.plist
+        echo "<dict>" >> ExportOptions.plist
+        echo "  <key>method</key>" >> ExportOptions.plist
+        echo "  <string>ad-hoc</string>" >> ExportOptions.plist
+        echo "  <key>signingStyle</key>" >> ExportOptions.plist
+        echo "  <string>manual</string>" >> ExportOptions.plist
+        echo "  <key>provisioningProfiles</key>" >> ExportOptions.plist
+        echo "  <dict/>" >> ExportOptions.plist
+        echo "  <key>signingCertificate</key>" >> ExportOptions.plist
+        echo "  <string></string>" >> ExportOptions.plist
+        echo "  <key>teamID</key>" >> ExportOptions.plist
+        echo "  <string></string>" >> ExportOptions.plist
+        echo "</dict>" >> ExportOptions.plist
+        echo "</plist>" >> ExportOptions.plist
+        
+    - name: Resolve Swift Packages
+      run: xcodebuild -resolvePackageDependencies -scheme SparkzShellApp -project SparkzShell.xcodeproj
+
+    - name: Build and Archive
+      run: |
+        xcodebuild -scheme SparkzShellApp -project SparkzShell.xcodeproj -configuration Release -destination 'generic/platform=iOS' \
+        -archivePath $PWD/build/SparkzShell.xcarchive \
+        CODE_SIGN_IDENTITY="" CODE_SIGNING_REQUIRED=NO \
+        clean archive
+
+    - name: Export Unsigned IPA
+      run: |
+        xcodebuild -exportArchive -archivePath $PWD/build/SparkzShell.xcarchive \
+        -exportPath $PWD/build \
+        -exportOptionsPlist ExportOptions.plist
+
+    - name: Upload IPA Artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: SparkzShell-unsigned-ipa
+        path: ${{ github.workspace }}/build/SparkZShellApp.ipa
